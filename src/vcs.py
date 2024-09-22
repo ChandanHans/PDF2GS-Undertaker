@@ -16,11 +16,11 @@ def resource_path(relative_path):
 
 
 OWNER = "ChandanHans"
-REPO_NAME = "PDF2XL"
-EXE_NAME = "PDF2XL.exe"
+REPO_NAME = "PDF2XL-Undertaker"
+EXE_NAME = f"{REPO_NAME}.exe"
 RELEASE_TAG = "v1.0.0"
 EXE_URL = (
-    f"https://github.com/{OWNER}/{REPO_NAME}/releases/download/{RELEASE_TAG}/PDF2XL.exe"
+    f"https://github.com/{OWNER}/{REPO_NAME}/releases/download/{RELEASE_TAG}/{EXE_NAME}"
 )
 REPO_API_URL = (
     f"https://api.github.com/repos/{OWNER}/{REPO_NAME}/git/trees/main?recursive=1"
@@ -121,8 +121,8 @@ def check_for_updates():
             except:
                 input("ERROR : Contact Chandan")
             sys.exit()
-    else:
-        if not is_my_machine() and update_local_files():
-            print("Script Updated")
-            input("Please close this app and restart it again")
-            sys.exit()
+    # else:
+    #     if not is_my_machine() and update_local_files():
+    #         print("Script Updated")
+    #         input("Please close this app and restart it again")
+    #         sys.exit()
