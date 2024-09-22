@@ -1,0 +1,14 @@
+/.env
+/.venv
+/Completed
+/images
+/Input
+/Output
+/Tesseract-OCR
+__pycache__
+kk.txt
+PDF2XL.spec
+dist
+build
+/exe
+token.pickle
