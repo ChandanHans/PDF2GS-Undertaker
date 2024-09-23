@@ -92,32 +92,24 @@ def get_image_result(image_path):
         + text
         + """
 
+Please format the output as a JSON object, following this structure exactly:
+
+{
+    "Dead person full name": "" (Extract from the beginning of the text. Do not change any Upper Case or Lower Case),
+    "Date of death": "" (The date should be in the format dd/mm/yyyy),
+    "Declarant Name": "" (Declarant full name),
+    "Declarant City": "" (Extract the city where the declarant is located),
+    "Declarant Street": "" (House number and street address associated with the declarant. Include only the house number and street address, excluding the city name.)
+}
+
 1. Filter out unnecessary characters like (*, #, ~, etc.).
 2. If any information is missing or if you believe the text is incomplete or not a valid death certificate, return an empty string ("") for the respective fields.
-
-2. Extract the following details and apply the exact formatting instructions:
-    - Full name of the deceased person: The first name must be in lowercase, and the LAST NAME must be in UPPERCASE. Make sure to apply this format even if the original text presents the name differently.
-    - Date of death: The date should be in the format dd/mm/yyyy.
-    - Declarant full name: The first name must be in lowercase, and the LAST NAME must be in UPPERCASE.
-    - City associated with the declarant: Extract the city where the declarant is located.
-    - House number and street address associated with the declarant: Include only the house number and street address, excluding the city name.
-
-4. The declarant's information typically follows a pattern including the title 'Déclarant:' followed by their name and address. Correct any misspellings found in the text.
-
-5. Ensure the following:
+3. The declarant's information typically follows a pattern including the title 'Déclarant:' followed by their name and address. Correct any misspellings found in the text.
+4. Ensure the following:
     - If any of the fields are not present, leave them as an empty string ("").
     - Correct obvious misspellings where applicable.
     - Return the result in the exact JSON format.
 
-Please format the output as a JSON object, following this structure exactly:
-
-{
-    "dead person full name": "",
-    "Date of death": "",
-    "declarant Name": "",
-    "declarant City": "",
-    "declarant street address": ""
-}
 """
     )
 

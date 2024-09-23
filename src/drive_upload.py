@@ -311,8 +311,9 @@ def convert_excel_to_google_sheet(drive_service, file_id, retries=5):
                 .copy(fileId=file_id, body=file_metadata, fields="id, webViewLink")
                 .execute()
             )
-            print(f"Excel file converted to Google Sheet with file ID {converted_file.get('id')}")
-            return converted_file.get("id")
+            print(f"Google Sheet : {converted_file.get('webViewLink')}")
+            file_id = converted_file.get("id")
+            return file_id
         
         except HttpError as error:
             if error.resp.status == 403 and 'userRateLimitExceeded' in str(error):
