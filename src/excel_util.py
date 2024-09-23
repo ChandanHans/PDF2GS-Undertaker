@@ -1,6 +1,4 @@
 import xlsxwriter
-from openpyxl import load_workbook
-from openpyxl.worksheet.table import Table, TableStyleInfo
 
 def save_table(df, file_path):
     # Create a workbook and add a worksheet

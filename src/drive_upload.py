@@ -2,9 +2,11 @@
 
 import os
 import pickle
+import time
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
 import requests
 
 from .constants import CREDS_JSON, TOKEN_FILE
@@ -246,12 +248,12 @@ def apply_cell_color_verification(sheets_service, spreadsheet_id, sheet_id, rows
     """
     requests = []
     # For both columns A and C
-    for col_letter in ["A", "B", "C", "D", "E", "F", "G"]:
+    for col_letter in ["A", "B", "C", "D", "E", "F", "G", "H", "I"]:
         for row in range(2, rows + 2):  # skipping header, rows are 1-based
             if col_letter == "A":
                 # Check if at least one word is uppercase in column A
                 condition_formula = (
-                    f'=OR(ISBLANK(A{row}), NOT(REGEXMATCH(A{row}, "\\b[A-Z]+\\b")))'
+                    f'=OR(EXACT(A{row}, UPPER(A{row})), NOT(REGEXMATCH(A{row}, "\\b[A-Z]+\\b")))'
                 )
             else:
                 # Check if the cell is empty for column C
@@ -297,15 +299,28 @@ def apply_cell_color_verification(sheets_service, spreadsheet_id, sheet_id, rows
     ).execute()
 
 
-def convert_excel_to_google_sheet(drive_service, file_id):
-    """Convert an uploaded Excel file to a Google Sheet."""
+def convert_excel_to_google_sheet(drive_service, file_id, retries=5):
+    """Convert an uploaded Excel file to a Google Sheet with exponential backoff."""
     file_metadata = {"mimeType": "application/vnd.google-apps.spreadsheet"}
-    converted_file = (
-        drive_service.files()
-        .copy(fileId=file_id, body=file_metadata, fields="id, webViewLink")
-        .execute()
-    )
-    print(
-        f"Excel file converted to Google Sheet with file ID {converted_file.get('id')}"
-    )
-    return converted_file.get("id")
+    delay = 1
+    
+    for attempt in range(retries):
+        try:
+            converted_file = (
+                drive_service.files()
+                .copy(fileId=file_id, body=file_metadata, fields="id, webViewLink")
+                .execute()
+            )
+            print(f"Excel file converted to Google Sheet with file ID {converted_file.get('id')}")
+            return converted_file.get("id")
+        
+        except HttpError as error:
+            if error.resp.status == 403 and 'userRateLimitExceeded' in str(error):
+                print(f"Rate limit exceeded, retrying in {delay} seconds...")
+                time.sleep(delay)
+                delay *= 2  # Exponential backoff
+            else:
+                print(f"An error occurred: {error}")
+                raise  # Raise other errors if not rate-limit related
+    
+    raise Exception("Max retries reached. Could not convert the file.")

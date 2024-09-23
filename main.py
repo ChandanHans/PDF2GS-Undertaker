@@ -16,7 +16,7 @@ from src.image_processing import *
 from src.utils import *
 from src.constants import *
 from src.drive_upload import *
-from src.undertaker_data import get_uploaded_pdfs
+from src.undertaker_data import get_uploaded_sheets
 
 
 def main():
@@ -47,10 +47,10 @@ def main():
 
         time_start = time.time()
         print(f"\nProcess Started For {pdf_name}\n")
-        if pdf_name not in get_uploaded_pdfs(pdf_name,drive_service,FOLDER_ID2):
+        if pdf_name.replace(".pdf", "") not in get_uploaded_sheets(drive_service, pdf_name, FOLDER_ID2):
 
             # Convert PDF to images
-            # pdf_to_images(pdf_path, IMAGE_FOLDER, 200, 3)
+            pdf_to_images(pdf_path, IMAGE_FOLDER, 200, 3)
 
             images = [
                 file for file in os.listdir(IMAGE_FOLDER) if file.lower().endswith(".png")
@@ -70,7 +70,8 @@ def main():
             df = pd.DataFrame(data)
             df.columns = [
                 "Name",
-                "Date Of Death",
+                "Date Of Death", 
+                "Declarant Name", 
                 "City", 
                 "Street",
                 "Phone",            
@@ -86,7 +87,7 @@ def main():
 
             sheet_id = convert_excel_to_google_sheet(drive_service, excel_drive_id)
             
-            apply_sheet_customizations(sheets_service, sheet_id, 6)
+            apply_sheet_customizations(sheets_service, sheet_id, 7)
             # After conversion, delete the Excel file from Google Drive
             delete_file_from_drive(drive_service, excel_drive_id)
         else:

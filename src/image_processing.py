@@ -40,7 +40,8 @@ def upload_image_and_append_sheet(
             return image[1]
 
     # Upload the image to the folder
-    file_metadata = {"name": f"Acte de décès - {name}.png", "parents": [FOLDER_ID1]}
+    file_name = f"Acte de décès - {name}.png"
+    file_metadata = {"name": file_name, "parents": [FOLDER_ID1]}
     media = MediaFileUpload(image_path, mimetype="image/png")
     uploaded_file = (
         drive_service.files()
@@ -52,13 +53,14 @@ def upload_image_and_append_sheet(
     file_link = uploaded_file.get("webViewLink")
 
     # Append the image name and link to the Google Sheet
-    row_data = [[f"Acte de décès - {name}.png", file_link]]
+    row_data = [file_name, file_link]
     sheets_service.spreadsheets().values().append(
         spreadsheetId=SHEET_ID,
         range="Sheet1!A:B",
         valueInputOption="RAW",
-        body={"values": row_data},
+        body={"values": [row_data]},
     ).execute()
+    existing_images.append(row_data)
     return file_link
 
 
@@ -90,30 +92,37 @@ def get_image_result(image_path):
         + text
         + """
 
-Prompt:
-1. Filter unnecessary characters like (*, #, ~, etc.).
+1. Filter out unnecessary characters like (*, #, ~, etc.).
+2. If any information is missing or if you believe the text is incomplete or not a valid death certificate, return an empty string ("") for the respective fields.
 
-- The full name of the deceased person 
-- Date of death (date in format dd/mm/yyyy).
-- City associated with the declarant
-- House number and street address associated with the declarant (without including the city name).
+2. Extract the following details and apply the exact formatting instructions:
+    - Full name of the deceased person: The first name must be in lowercase, and the LAST NAME must be in UPPERCASE. Make sure to apply this format even if the original text presents the name differently.
+    - Date of death: The date should be in the format dd/mm/yyyy.
+    - Declarant full name: The first name must be in lowercase, and the LAST NAME must be in UPPERCASE.
+    - City associated with the declarant: Extract the city where the declarant is located.
+    - House number and street address associated with the declarant: Include only the house number and street address, excluding the city name.
 
-Do not change the name case first name should be in lower case and LAST NAME should be in upper case.
-The declarant's information typically follows a pattern including the title 'Déclarant:' followed by their name and then their address. if there is any miss spell then correct it.
+4. The declarant's information typically follows a pattern including the title 'Déclarant:' followed by their name and address. Correct any misspellings found in the text.
 
-Your response must be in this JSON format:
+5. Ensure the following:
+    - If any of the fields are not present, leave them as an empty string ("").
+    - Correct obvious misspellings where applicable.
+    - Return the result in the exact JSON format.
+
+Please format the output as a JSON object, following this structure exactly:
 
 {
     "dead person full name": "",
     "Date of death": "",
+    "declarant Name": "",
     "declarant City": "",
-    "declarant street address": "",
+    "declarant street address": ""
 }
 """
     )
 
     response = openai_client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-3.5-turbo",
         messages=[
             {
                 "role": "user",
@@ -126,19 +135,13 @@ Your response must be in this JSON format:
     return result
 
 
-def get_contact_from_sheet(address: str):
+def get_contact(address: str):
     address = unidecode(address).replace(" ", "").replace("-", "").replace(",", "").lower()
     undertaker_data = get_undertaker_data()
     for row in undertaker_data:
         if address in row[0]:
             return row[1], row[2]
     return None, None
-
-
-@lru_cache(maxsize=None)
-def get_contact(name):
-    phone, email = get_contact_from_sheet(name)
-    return phone, email
 
 
 def process_image(image, drive_service, sheets_service, existing_images):
@@ -148,7 +151,9 @@ def process_image(image, drive_service, sheets_service, existing_images):
         city = street = dod = None
         image_path = f"{IMAGE_FOLDER}/{image}"
         image_result: dict[str, str] = get_image_result(image_path)
-        name, dod, city, street = image_result.values()
+        name, dod, declarant_name, city, street = image_result.values()
+        if name == name.upper():
+            print("hello")
         phone = email = None
         if street:
             phone, email = get_contact(street)
@@ -160,7 +165,7 @@ def process_image(image, drive_service, sheets_service, existing_images):
         file_link = upload_image_and_append_sheet(
             name, image_path, drive_service, sheets_service, existing_images
         )
-        result = [name, dod, city, street, phone, email, "à envoyer", file_link]
+        result = [name, dod, declarant_name, city, street, phone, email, "à envoyer", file_link]
     except Exception as e:
         print(e)
 
