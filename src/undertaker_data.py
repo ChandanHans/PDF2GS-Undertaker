@@ -23,8 +23,8 @@ def get_uploaded_sheets(drive_service, pdf_name : str, folder_id=None):
     
     if folder_id:
         query += f" and '{folder_id}' in parents"
-    
-    results = drive_service.files().list(q=query, fields="files(id, name)").execute()
+    request = drive_service.files().list(q=query, fields="files(id, name)")
+    results = execute_with_retry(request)
     files = results.get('files', [])
 
     # Return a list of file names

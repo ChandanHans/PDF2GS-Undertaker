@@ -4,7 +4,6 @@ import platform
 import subprocess
 import pytesseract
 from openai import OpenAI
-from functools import lru_cache
 from unidecode import unidecode
 from googleapiclient.http import MediaFileUpload
 
@@ -43,23 +42,20 @@ def upload_image_and_append_sheet(
     file_name = f"Acte de décès - {name}.png"
     file_metadata = {"name": file_name, "parents": [FOLDER_ID1]}
     media = MediaFileUpload(image_path, mimetype="image/png")
-    uploaded_file = (
-        drive_service.files()
-        .create(body=file_metadata, media_body=media, fields="id, webViewLink")
-        .execute()
-    )
-
+    request = drive_service.files().create(body=file_metadata, media_body=media, fields="id, webViewLink")
+    uploaded_file = execute_with_retry(request)
     # Get the file ID and web link
     file_link = uploaded_file.get("webViewLink")
 
     # Append the image name and link to the Google Sheet
     row_data = [file_name, file_link]
-    sheets_service.spreadsheets().values().append(
+    request = sheets_service.spreadsheets().values().append(
         spreadsheetId=SHEET_ID,
         range="Sheet1!A:B",
         valueInputOption="RAW",
         body={"values": [row_data]},
-    ).execute()
+    )
+    execute_with_retry(request)
     existing_images.append(row_data)
     return file_link
 
@@ -69,15 +65,11 @@ def get_existing_image_names(sheets_service, sheet_id):
     Retrieve and cache the existing image names from the Google Sheet.
     This function is called once to avoid multiple requests to the sheet.
     """
-    result = (
-        sheets_service.spreadsheets()
-        .values()
-        .get(
+    request = sheets_service.spreadsheets().values().get(
             spreadsheetId=sheet_id,
-            range="Sheet1!A:B",  # Assuming the image names are in column A
+            range="Sheet1!A:B", 
         )
-        .execute()
-    )
+    result = execute_with_retry(request)
     return result.get("values", [])
 
 
@@ -92,6 +84,15 @@ def get_image_result(image_path):
         + text
         + """
 
+
+1. Filter out unnecessary characters like (*, #, ~, etc.).
+2. If any information is missing or if you believe the text is incomplete or not a valid death certificate, return an empty string ("") for the respective fields.
+3. The declarant's information typically follows a pattern including the title 'Déclarant:' followed by their name and address. Correct any misspellings found in the text.
+4. Ensure the following:
+    - If any of the fields are not present, leave them as an empty string ("").
+    - Correct obvious misspellings in address where applicable.
+    - Return the result in the exact JSON format.
+
 Please format the output as a JSON object, following this structure exactly:
 
 {
@@ -101,15 +102,6 @@ Please format the output as a JSON object, following this structure exactly:
     "Declarant City": "" (Extract the city where the declarant is located),
     "Declarant Street": "" (House number and street address associated with the declarant. Include only the house number and street address, excluding the city name.)
 }
-
-1. Filter out unnecessary characters like (*, #, ~, etc.).
-2. If any information is missing or if you believe the text is incomplete or not a valid death certificate, return an empty string ("") for the respective fields.
-3. The declarant's information typically follows a pattern including the title 'Déclarant:' followed by their name and address. Correct any misspellings found in the text.
-4. Ensure the following:
-    - If any of the fields are not present, leave them as an empty string ("").
-    - Correct obvious misspellings where applicable.
-    - Return the result in the exact JSON format.
-
 """
     )
 

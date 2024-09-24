@@ -6,9 +6,9 @@ import time
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.http import MediaFileUpload
-from googleapiclient.errors import HttpError
 import requests
 
+from .utils import execute_with_retry
 from .constants import CREDS_JSON, TOKEN_FILE
 
 SCOPES = [
@@ -74,18 +74,16 @@ def upload_to_drive(service, file_path, folder_id):
     """Upload a file to Google Drive."""
     file_metadata = {"name": os.path.basename(file_path), "parents": [folder_id]}
     media = MediaFileUpload(file_path, resumable=True)
-    uploaded_file = (
-        service.files()
-        .create(body=file_metadata, media_body=media, fields="id")
-        .execute()
-    )
+    request = service.files().create(body=file_metadata, media_body=media, fields="id")
+    uploaded_file = execute_with_retry(request)
     file_id = uploaded_file.get("id")
     return file_id
 
 
 def delete_file_from_drive(service, file_id):
     """Delete a file from Google Drive by its file ID."""
-    service.files().delete(fileId=file_id).execute()
+    request = service.files().delete(fileId=file_id)
+    execute_with_retry(request)
     print(f"Deleted file with ID {file_id} from Google Drive")
 
 
@@ -98,9 +96,8 @@ def get_sheet_id_by_name(sheets_service, spreadsheet_id, sheet_name):
     :param sheet_name: The name of the sheet (e.g., "Sheet1").
     :return: The sheetId as an integer.
     """
-    spreadsheet = (
-        sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
-    )
+    request = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id)
+    spreadsheet = execute_with_retry(request)
     for sheet in spreadsheet.get("sheets", []):
         if sheet["properties"]["title"] == sheet_name:
             return sheet["properties"]["sheetId"]
@@ -151,12 +148,8 @@ def get_sheet_data(sheets_service, spreadsheet_id):
     :param sheet_id: The ID of the sheet to fetch data from.
     :return: A list of rows containing cell data.
     """
-    result = (
-        sheets_service.spreadsheets()
-        .values()
-        .get(spreadsheetId=spreadsheet_id, range=f"Sheet1!A:Z")
-        .execute()
-    )
+    request = sheets_service.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=f"Sheet1!A:Z")
+    result = execute_with_retry(request)
     return result.get("values", [])
 
 
@@ -187,9 +180,10 @@ def apply_data_validation(sheets_service, spreadsheet_id, sheet_id, col, rows, o
         )
 
     body = {"requests": requests}
-    sheets_service.spreadsheets().batchUpdate(
+    request = sheets_service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id, body=body
-    ).execute()
+    )
+    execute_with_retry(request)
 
 
 def apply_conditional_formatting(
@@ -231,9 +225,10 @@ def apply_conditional_formatting(
         )
 
     body = {"requests": requests}
-    sheets_service.spreadsheets().batchUpdate(
+    request = sheets_service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id, body=body
-    ).execute()
+    )
+    execute_with_retry(request)
 
 
 def apply_cell_color_verification(sheets_service, spreadsheet_id, sheet_id, rows):
@@ -294,34 +289,17 @@ def apply_cell_color_verification(sheets_service, spreadsheet_id, sheet_id, rows
 
     # Batch update the conditional formatting rules
     body = {"requests": requests}
-    sheets_service.spreadsheets().batchUpdate(
+    request = sheets_service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id, body=body
-    ).execute()
+    )
+    execute_with_retry(request)
 
 
-def convert_excel_to_google_sheet(drive_service, file_id, retries=5):
+def convert_excel_to_google_sheet(drive_service, file_id):
     """Convert an uploaded Excel file to a Google Sheet with exponential backoff."""
     file_metadata = {"mimeType": "application/vnd.google-apps.spreadsheet"}
-    delay = 1
-    
-    for attempt in range(retries):
-        try:
-            converted_file = (
-                drive_service.files()
-                .copy(fileId=file_id, body=file_metadata, fields="id, webViewLink")
-                .execute()
-            )
-            print(f"Google Sheet : {converted_file.get('webViewLink')}")
-            file_id = converted_file.get("id")
-            return file_id
-        
-        except HttpError as error:
-            if error.resp.status == 403 and 'userRateLimitExceeded' in str(error):
-                print(f"Rate limit exceeded, retrying in {delay} seconds...")
-                time.sleep(delay)
-                delay *= 2  # Exponential backoff
-            else:
-                print(f"An error occurred: {error}")
-                raise  # Raise other errors if not rate-limit related
-    
-    raise Exception("Max retries reached. Could not convert the file.")
+    request = drive_service.files().copy(fileId=file_id, body=file_metadata, fields="id, webViewLink")
+    converted_file = execute_with_retry(request)
+    print(f"Google Sheet : {converted_file.get('webViewLink')}")
+    file_id = converted_file.get("id")
+    return file_id
