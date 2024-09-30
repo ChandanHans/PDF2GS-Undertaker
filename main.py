@@ -26,7 +26,7 @@ def main():
     sheets_service = build('sheets', 'v4', credentials=creds)
 
 
-    existing_images = get_existing_image_names(sheets_service, SHEET_ID)
+    existing_images = get_existing_image_names(sheets_service, IMAGE_SHEET_ID)
 
 
     check_for_tesseract()

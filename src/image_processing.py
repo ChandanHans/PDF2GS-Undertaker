@@ -8,7 +8,6 @@ from unidecode import unidecode
 from googleapiclient.http import MediaFileUpload
 
 from .undertaker_data import get_undertaker_data
-from .constants import IMAGE_FOLDER, SHEET_ID, FOLDER_ID1
 from .constants import *
 from .utils import *
 
@@ -50,7 +49,7 @@ def upload_image_and_append_sheet(
     # Append the image name and link to the Google Sheet
     row_data = [file_name, file_link]
     request = sheets_service.spreadsheets().values().append(
-        spreadsheetId=SHEET_ID,
+        spreadsheetId=IMAGE_SHEET_ID,
         range="Sheet1!A:B",
         valueInputOption="RAW",
         body={"values": [row_data]},

@@ -2,9 +2,7 @@
 
 import os
 import pickle
-import time
 from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 from googleapiclient.http import MediaFileUpload
 import requests
 
@@ -40,12 +38,6 @@ def authenticate_google_drive():
     if os.path.exists(TOKEN_FILE):
         with open(TOKEN_FILE, "rb") as token:
             creds = pickle.load(token)
-
-    # If the credentials are expired or the user chooses a different account, log in again
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            # Try to refresh the credentials
-            creds.refresh(Request())
 
     # Check if the credentials are valid
     if creds and creds.valid:
