@@ -60,6 +60,8 @@ def authenticate_google_drive():
     # Save the new credentials to the token file
     with open(TOKEN_FILE, "wb") as token:
         pickle.dump(creds, token)
+    
+    return creds
 
 
 def upload_to_drive(service, file_path, folder_id):
