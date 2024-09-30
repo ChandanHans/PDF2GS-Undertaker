@@ -128,9 +128,10 @@ def apply_sheet_customizations(sheets_service, spreadsheet_id, validation_column
     apply_conditional_formatting(
         sheets_service, spreadsheet_id, sheet_id, validation_column, rows, color_options, color_codes
     )
-
+    
+    separator = get_formula_separator(sheets_service, spreadsheet_id)
     # Apply cell verification and color to columns A and C, skip column D
-    apply_cell_color_verification(sheets_service, spreadsheet_id, sheet_id, rows)
+    apply_cell_color_verification(sheets_service, spreadsheet_id, sheet_id, rows, separator)
 
 
 def get_sheet_data(sheets_service, spreadsheet_id):
@@ -192,8 +193,8 @@ def apply_conditional_formatting(
                     "rule": {
                         "ranges": [
                             {
-                                "sheetId": sheet_id,  # Use the integer sheet_id here
-                                "startRowIndex": 1,
+                                "sheetId": sheet_id,
+                                "startRowIndex": 1,  # Adjust start row as necessary
                                 "endRowIndex": rows + 1,
                                 "startColumnIndex": col,
                                 "endColumnIndex": col + 1,
@@ -209,11 +210,12 @@ def apply_conditional_formatting(
                                     "red": int(color[1:3], 16) / 255.0,
                                     "green": int(color[3:5], 16) / 255.0,
                                     "blue": int(color[5:7], 16) / 255.0,
+                                    "alpha": 1.0  # Ensure alpha is set to 1
                                 }
                             },
                         },
                     },
-                    "index": 0,
+                    "index": 0,  # This determines where the rule is applied in the order of rules
                 }
             }
         )
@@ -225,7 +227,7 @@ def apply_conditional_formatting(
     execute_with_retry(request)
 
 
-def apply_cell_color_verification(sheets_service, spreadsheet_id, sheet_id, rows):
+def apply_cell_color_verification(sheets_service, spreadsheet_id, sheet_id, rows, separator=","):
     """
     1. If a cell is empty, turn it red.
     2. If column A doesn't have at least one uppercase word, turn it red.
@@ -242,10 +244,10 @@ def apply_cell_color_verification(sheets_service, spreadsheet_id, sheet_id, rows
             if col_letter == "A":
                 # Check if at least one word is uppercase in column A
                 condition_formula = (
-                    f'=OR(EXACT(A{row}, UPPER(A{row})), NOT(REGEXMATCH(A{row}, "\\b[A-Z]+\\b")))'
+                    f'=OR(EXACT(A{row}{separator} UPPER(A{row})){separator} NOT(REGEXMATCH(A{row}{separator} "\\b[A-Z]+\\b")))'
                 )
             else:
-                # Check if the cell is empty for column C
+                # Check if the cell is empty for other columns (e.g., C)
                 condition_formula = f"=ISBLANK({col_letter}{row})"
 
             # Create a conditional formatting rule
@@ -288,6 +290,25 @@ def apply_cell_color_verification(sheets_service, spreadsheet_id, sheet_id, rows
     )
     execute_with_retry(request)
 
+def get_formula_separator(sheets_service, spreadsheet_id):
+    """
+    Determine the formula separator (comma or semicolon) based on the spreadsheet locale.
+    
+    :param sheets_service: The Google Sheets API service object.
+    :param spreadsheet_id: The ID of the spreadsheet.
+    :return: The formula separator (',' or ';').
+    """
+    # Get spreadsheet metadata, including locale
+    request = sheets_service.spreadsheets().get(spreadsheetId=spreadsheet_id)
+    spreadsheet = execute_with_retry(request)
+    locale = spreadsheet.get('properties', {}).get('locale', 'en_US')  # Default to 'en_US'
+    
+    # Use semicolon for locales like 'fr_FR', 'de_DE', etc.
+    if locale.startswith('fr') or locale.startswith('de') or locale.startswith('it'):
+        return ';'  # Use semicolon for locales like French, German, Italian
+    else:
+        return ','  # Default to comma for English and similar locales
+    
 
 def convert_excel_to_google_sheet(drive_service, file_id):
     """Convert an uploaded Excel file to a Google Sheet with exponential backoff."""
