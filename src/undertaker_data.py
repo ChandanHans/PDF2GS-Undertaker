@@ -47,6 +47,7 @@ def get_undertaker_data():
     
     for _, row in df.iterrows():
         address = unidecode(row["Adresse"]).replace(" ", "").replace("-", "").replace(",", "").lower()
-        result.append((address, row["Phone"], str(row["Email"]).strip()))
+        declarant = unidecode(row["Déclarant"]).replace(" ", "").replace("-", "").replace(",", "").lower()
+        result.append((declarant, address, row["Phone"], str(row["Email"]).strip()))
     
     return result

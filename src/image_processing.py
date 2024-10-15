@@ -122,10 +122,17 @@ def get_contact(address: str):
     address = unidecode(address).replace(" ", "").replace("-", "").replace(",", "").lower()
     undertaker_data = get_undertaker_data()
     for row in undertaker_data:
-        if address in row[0]:
-            return row[1], row[2]
+        if address in row[1]:
+            return row[2], row[3]
     return None, None
 
+def get_declarant_contact(name : str):
+    name = unidecode(name).replace(" ", "").replace("-", "").replace(",", "").lower()
+    undertaker_data = get_undertaker_data()
+    for row in undertaker_data:
+        if name in row[0]:
+            return row[2], row[3]
+    return None, None
 
 def process_image(image, drive_service, sheets_service, existing_images):
     result = None
@@ -135,13 +142,14 @@ def process_image(image, drive_service, sheets_service, existing_images):
         image_path = f"{IMAGE_FOLDER}/{image}"
         image_result: dict[str, str] = get_image_result(image_path)
         name, dod, declarant_name, city, street = image_result.values()
-        if name == name.upper():
-            print("hello")
         phone = email = None
-        if street:
-            phone, email = get_contact(street)
-        if city and not(phone or email):
-            phone, email = get_contact(city)
+        if declarant_name:
+            phone, email = get_declarant_contact(declarant_name)
+        if not(phone or email):
+            if street:
+                phone, email = get_contact(street)
+            if city and not(phone or email):
+                phone, email = get_contact(city)
 
         print(f"     {image} in {int(time.time()-t)} sec", end="\r")
 
