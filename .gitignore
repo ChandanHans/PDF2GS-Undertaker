@@ -12,3 +12,4 @@ dist
 build
 /exe
 token.pickle
+/k.py

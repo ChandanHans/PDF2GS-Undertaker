@@ -85,9 +85,10 @@ def get_image_result(image_path):
 
 
 1. Filter out unnecessary characters like (*, #, ~, etc.).
-2. If any information is missing or if you believe the text is incomplete or not a valid death certificate, return an empty string ("") for the respective fields.
-3. The declarant's information typically follows a pattern including the title 'Déclarant:' followed by their name and address. Correct any misspellings found in the text.
-4. Ensure the following:
+2. case sensitive so Don't change any case because I Identify fname and lname with case.
+3. If any information is missing or if you believe the text is incomplete or not a valid death certificate, return an empty string ("") for the respective fields.
+4. The declarant's information typically follows a pattern including the title 'Déclarant:' followed by their name and address. Correct any misspellings found in the text.
+5. Ensure the following:
     - If any of the fields are not present, leave them as an empty string ("").
     - Correct obvious misspellings in address where applicable.
     - Return the result in the exact JSON format.
