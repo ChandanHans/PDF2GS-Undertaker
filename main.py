@@ -47,7 +47,7 @@ def main():
 
         time_start = time.time()
         print(f"\nProcess Started For {pdf_name}\n")
-        if pdf_name.replace(".pdf", "") not in get_uploaded_sheets(drive_service, pdf_name, FOLDER_ID2):
+        if pdf_name.replace(".pdf", "") not in get_uploaded_sheets(drive_service, pdf_name, TARGET_FOLDER_ID):
 
             # Convert PDF to images
             pdf_to_images(pdf_path, IMAGE_FOLDER, 200, 3)
@@ -82,8 +82,8 @@ def main():
             save_table(df, excel_path)
         
             # Upload Excel to Google Drive and convert it to Google Sheet
-            upload_to_drive(drive_service, pdf_path, FOLDER_ID2)
-            excel_drive_id = upload_to_drive(drive_service, excel_path, FOLDER_ID2)
+            upload_to_drive(drive_service, pdf_path, TARGET_FOLDER_ID)
+            excel_drive_id = upload_to_drive(drive_service, excel_path, TARGET_FOLDER_ID)
 
             sheet_id = convert_excel_to_google_sheet(drive_service, excel_drive_id)
             
