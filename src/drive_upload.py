@@ -3,6 +3,7 @@
 import os
 import pickle
 from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 from googleapiclient.http import MediaFileUpload
 import requests
 
@@ -31,7 +32,7 @@ def get_user_profile(creds):
 
 
 def authenticate_google_drive():
-    """Authenticate and return the Google Drive service instance."""
+    """Authenticate and return the Google Drive service instance with refresh token support."""
     creds = None
 
     # Load token from file if it exists
@@ -39,7 +40,7 @@ def authenticate_google_drive():
         with open(TOKEN_FILE, "rb") as token:
             creds = pickle.load(token)
 
-    # Check if the credentials are valid
+    # Check if the credentials are valid or can be refreshed
     if creds and creds.valid:
         # Get the current user email from the creds
         current_user = get_user_profile(creds)
@@ -49,18 +50,24 @@ def authenticate_google_drive():
         choice = (
             input("Do you want to use the current account? (y/n): ").strip().lower()
         )
-
         if choice != "n":
             return creds  # Return the current credentials if the user chooses "current"
+    elif creds and creds.expired and creds.refresh_token:
+        print("Refreshing expired token...")
+        creds.refresh(Request())  # Automatically refresh the token
+        with open(TOKEN_FILE, "wb") as token:
+            pickle.dump(creds, token)
+        return creds
 
-    # Run OAuth flow to get new credentials
+    # If no valid credentials, run OAuth flow to get new credentials
+    print("No valid credentials found. Please log in.")
     flow = InstalledAppFlow.from_client_config(CREDS_JSON, SCOPES)
-    creds = flow.run_local_server()
+    creds = flow.run_local_server(port=0)
 
     # Save the new credentials to the token file
     with open(TOKEN_FILE, "wb") as token:
         pickle.dump(creds, token)
-    
+
     return creds
 
 
