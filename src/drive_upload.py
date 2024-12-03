@@ -40,6 +40,15 @@ def authenticate_google_drive():
         with open(TOKEN_FILE, "rb") as token:
             creds = pickle.load(token)
 
+    if creds and creds.expired and creds.refresh_token:
+        try:
+            print("Refreshing expired token...")
+            creds.refresh(Request())  # Automatically refresh the token
+            with open(TOKEN_FILE, "wb") as token:
+                pickle.dump(creds, token)
+        except:
+            pass
+
     # Check if the credentials are valid or can be refreshed
     if creds and creds.valid:
         # Get the current user email from the creds
@@ -52,12 +61,6 @@ def authenticate_google_drive():
         )
         if choice != "n":
             return creds  # Return the current credentials if the user chooses "current"
-    elif creds and creds.expired and creds.refresh_token:
-        print("Refreshing expired token...")
-        creds.refresh(Request())  # Automatically refresh the token
-        with open(TOKEN_FILE, "wb") as token:
-            pickle.dump(creds, token)
-        return creds
 
     # If no valid credentials, run OAuth flow to get new credentials
     print("No valid credentials found. Please log in.")
